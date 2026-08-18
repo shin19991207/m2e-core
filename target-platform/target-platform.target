@@ -52,7 +52,7 @@
 				<dependency>
 					<groupId>ch.qos.logback</groupId>
 					<artifactId>logback-classic</artifactId>
-					<version>1.5.38</version>
+					<version>1.6.3</version>
 					<type>jar</type>
 				</dependency>
 				<dependency>
@@ -80,7 +80,7 @@
 				<dependency>
 					<groupId>com.google.guava</groupId>
 					<artifactId>guava</artifactId>
-					<version>33.6.0-jre</version>
+					<version>33.7.0-jre</version>
 					<type>jar</type>
 				</dependency>
 				<dependency>
@@ -92,13 +92,13 @@
 				<dependency>
 					<groupId>commons-codec</groupId>
 					<artifactId>commons-codec</artifactId>
-					<version>1.22.0</version>
+					<version>1.22.1</version>
 					<type>jar</type>
 				</dependency>
 				<dependency>
 					<groupId>org.apache.commons</groupId>
 					<artifactId>commons-collections4</artifactId>
-					<version>4.5.0</version>
+					<version>4.6.0</version>
 					<type>jar</type>
 				</dependency>
 				<dependency>
@@ -148,7 +148,7 @@
 				<dependency>
 					<groupId>org.apache.maven.archetype</groupId>
 					<artifactId>archetype-common</artifactId>
-					<version>3.2.1</version>
+					<version>3.4.1</version>
 					<type>jar</type>
 				</dependency>
 			</dependencies>
@@ -171,13 +171,13 @@ Import-Package:        org.jdom2*
 				<dependency>
 					<groupId>org.apache.maven.archetype</groupId>
 					<artifactId>archetype-catalog</artifactId>
-					<version>3.2.1</version>
+					<version>3.4.1</version>
 					<type>jar</type>
 				</dependency>
 				<dependency>
 					<groupId>org.apache.maven.archetype</groupId>
 					<artifactId>archetype-descriptor</artifactId>
-					<version>3.2.1</version>
+					<version>3.4.1</version>
 					<type>jar</type>
 				</dependency>
 				<dependency>
