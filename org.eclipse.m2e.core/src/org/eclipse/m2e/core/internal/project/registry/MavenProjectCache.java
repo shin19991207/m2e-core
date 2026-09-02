@@ -25,11 +25,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -62,6 +65,8 @@ import org.eclipse.m2e.core.project.IProjectConfiguration;
 @Component(service = MavenProjectCache.class)
 public class MavenProjectCache {
 
+  private static final Logger log = LoggerFactory.getLogger(MavenProjectCache.class);
+
   private static final int MAX_CACHE_SIZE = Integer.getInteger("m2e.project.cache.size", 50);
 
   private static final boolean INITIAL_BUILD_RETENTION_ENABLED = Boolean.getBoolean("m2e.project.cache.initialBuildRetention");
@@ -84,6 +89,18 @@ public class MavenProjectCache {
   private final ScheduledExecutorService retentionCleanupExecutor;
 
   private final Object retentionCleanupLock = new Object();
+
+  private final LongAdder cacheMisses = new LongAdder();
+
+  private final LongAdder normalCacheHits = new LongAdder();
+
+  private final LongAdder retentionHits = new LongAdder();
+
+  private final LongAdder retentionReleases = new LongAdder();
+
+  private final LongAdder modelBuilds = new LongAdder();
+
+  private final LongAdder modelBuildTime = new LongAdder();
 
   public MavenProjectCache() {
     this.retentionCleanupExecutor = INITIAL_BUILD_RETENTION_ENABLED
@@ -112,6 +129,11 @@ public class MavenProjectCache {
     if(retentionCleanupExecutor != null) {
       retentionCleanupExecutor.shutdownNow();
     }
+    log.info(
+        "M2E_BENCHMARK operation=cache-summary capacity={} misses={} modelBuilds={} modelBuildTimeMs={} normalHits={} retentionHits={} retentionReleases={} retentionEnabled={} retentionMaxAgeMillis={}",
+        MAX_CACHE_SIZE, cacheMisses.sum(), modelBuilds.sum(), modelBuildTime.sum(), normalCacheHits.sum(),
+        retentionHits.sum(), retentionReleases.sum(), INITIAL_BUILD_RETENTION_ENABLED,
+        INITIAL_BUILD_RETENTION_MAX_AGE_MILLIS);
   }
 
   /**
@@ -145,12 +167,16 @@ public class MavenProjectCache {
     if(INITIAL_BUILD_RETENTION_ENABLED) {
       RetainedProject retained = initialBuildRetentions.get(retainedProjectKey(cacheKey, pomFile));
       if(retained != null) {
+        retentionHits.increment();
         MavenProject retainedProject = retained.mavenProject();
         if(cachedProject != retainedProject) {
           cacheLine.updateProject(facade, retainedProject);
         }
         return retainedProject;
       }
+    }
+    if(cachedProject != null) {
+      normalCacheHits.increment();
     }
     return cacheLine.getProject(facade, projectLoader);
   }
@@ -198,6 +224,7 @@ public class MavenProjectCache {
     if(retained == null) {
       return;
     }
+    retentionReleases.increment();
     onInitialBuildRetentionReleased(retainedKey, retained);
   }
 
@@ -329,10 +356,18 @@ public class MavenProjectCache {
       if(loader == null) {
         return projects.get(pomFile);
       }
+
       return projects.computeIfAbsent(pomFile, f -> {
-        MavenProject mavenProject = loader.apply(facade);
-        distributeProjectToCache(mavenProject, facade.getConfiguration());
-        return mavenProject;
+        cacheMisses.increment();
+        modelBuilds.increment();
+        long start = System.currentTimeMillis();
+        try {
+          MavenProject mavenProject = loader.apply(facade);
+          distributeProjectToCache(mavenProject, facade.getConfiguration());
+          return mavenProject;
+        } finally {
+          modelBuildTime.add(System.currentTimeMillis() - start);
+        }
       });
     }
 

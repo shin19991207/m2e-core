@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.LongAdder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,10 @@ import org.eclipse.m2e.core.project.configurator.MojoExecutionKey;
 
 public class MavenBuilder extends IncrementalProjectBuilder implements DeltaProvider {
   private static final Logger log = LoggerFactory.getLogger(MavenBuilder.class);
+
+  private static final LongAdder buildCount = new LongAdder();
+
+  private static final LongAdder totalBuildTimeMillis = new LongAdder();
 
   final MavenBuilderImpl builder = new MavenBuilderImpl(this);
 
@@ -200,7 +205,13 @@ public class MavenBuilder extends IncrementalProjectBuilder implements DeltaProv
     try {
       return methodBuild.execute(kind, args, monitor);
     } finally {
-      log.debug("Built project {} in {} ms", getProject().getName(), System.currentTimeMillis() - start); //$NON-NLS-1$
+      long end = System.currentTimeMillis();
+      long durationMillis = end - start;
+      buildCount.increment();
+      totalBuildTimeMillis.add(durationMillis);
+      log.info(
+          "M2E_BENCHMARK operation=builder project={} kind={} startMs={} endMs={} durationMs={} totalBuilds={} totalBuilderTimeMs={}",
+          getProject().getName(), kind, start, end, durationMillis, buildCount.sum(), totalBuildTimeMillis.sum());
     }
   }
 
